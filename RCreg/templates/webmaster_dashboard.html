@@ -130,10 +130,10 @@
                 <form id="searchAdminForm" method="POST" action="{{ url_for('webmaster_dashboard') }}">
                     {{ search_admin_form.hidden_tag() }}
                     <div class="form-group">
-                        <label for="search_admin_term">Search Admin (ID or Email)</label>
+                        <label for="search_admin_term">Search Admin (Phone Number or Email)</label>
                         {{ search_admin_form.search_query(class="form-control", id="search_query") }}
                     </div>
-                    <button type="submit" name="search_admin" class="btn btn-primary">Search</button>
+                    <button type="submit" name="search_query" class="btn btn-primary">Search</button>
                 </form>
             </div>
 
@@ -147,6 +147,7 @@
                             <th>ID</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Phone Number</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -155,6 +156,7 @@
                         <tr>
                             <td>{{ admin.id }}</td>
                             <td>{{ admin.admin_name }}</td>
+                            <td>{{admin.phone_number}}</td>
                             <td>{{ admin.email }}</td>
                             <td>
                                 <div class="btn-group">

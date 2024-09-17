@@ -147,20 +147,28 @@ class DeleteLog(db.Model):
         return f'<DeleteLog {self.record_type} {self.record_id} deleted by {self.deleted_by} at {self.deleted_at}>'
 
 #Helper Function for Logging Actions
-
 def log_action(action_type, user_id, record_type=None, record_id=None):
     print(f'Action Type: {action_type}, User ID: {user_id}, Record Type: {record_type}, Record ID: {record_id}')
     
-    if record_type is None:
+    # Check if record_type is provided only for delete actions
+    if action_type == 'delete' and record_type is None:
         raise ValueError("record_type must be provided for logging deletions.")
-    
+
     try:
-        delete_log = DeleteLog(
-            record_type=record_type,
-            record_id=record_id,
-            deleted_by=user_id
-        )
-        db.session.add(delete_log)
+        if action_type == 'delete':
+            # Create a DeleteLog entry only for deletions
+            delete_log = DeleteLog(
+                record_type=record_type,
+                record_id=record_id,
+                deleted_by=user_id
+            )
+            db.session.add(delete_log)
+        else:
+            # Handle other actions (like 'edit', 'create', etc.)
+            # You can create separate logs for these actions if needed
+            # For now, it's a placeholder print statement
+            print(f"Action {action_type} performed by user {user_id}")
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -514,6 +522,8 @@ def mark_present():
     member.last_edited_by = current_user.id
     member.last_edited_at = datetime.utcnow()
 
+
+
     # Create Attendance record
     attendance = Attendance(
         member_id=member.id,
@@ -584,11 +594,11 @@ def webmaster_dashboard():
     member_results = []
     admin_results = []
     admin_form = AdminForm()
-    search_admin_form = SearchAdminForm() #search for admins # Assuming you have a MemberForm class for member search
+    search_admin_form = SearchAdminForm()  #search for admins # Assuming you have a MemberForm class for member search
     # Handle member search form submission
     if search_form.validate_on_submit():
         search_term = search_form.search_term.data
-        print(f"Search Term: {search_term}")  # Debugging line
+        print(f"Search Term: {search_term}")  # Debugging line 
         member_results = Member.query.filter(
             (Member.phone_number.ilike(f'%{search_term}%')) | 
             (Member.email.ilike(f'%{search_term}%'))).all()
@@ -606,7 +616,7 @@ def webmaster_dashboard():
             (Admin.phone_number.ilike(f'%{search_query}%')) | 
             (Admin.email.ilike(f'%{search_query}%'))).all()
         if not admin_results:
-            flash('No results found for the search query', 'danger')
+            flash('Admin not found', 'danger')
 
     return render_template(
         'webmaster_dashboard.html',
@@ -700,9 +710,9 @@ def edit_member(member_id):
         db.session.commit()
         
         # Log the action
-        log_action('edit_member', current_user.id)
+        # log_action('edit_member', current_user.id)
          # Log the action
-        # log_action('edit_member', current_user.id, member_id)
+        log_action('edit_member', current_user.id, member_id)
     
         
         flash('Member updated successfully!', 'success')
@@ -783,15 +793,20 @@ def edit_admin(admin_id):
         admin.admin_name = form.admin_name.data
         admin.phone_number = form.phone_number.data
 
-        db.session.commit()
-
         # Log the action
         log_action('edit_admin', current_user.id)
 
-        flash('Admin updated successfully!', 'success')
-        return redirect(url_for('webmaster_dashboard'))  # Adjust if necessary
+        # db.session.commit()
+        try:
+            db.session.commit()
+            flash('Admin updated successfully!', 'success')
+            return redirect(url_for('webmaster_dashboard'))
+        except:
+            flash('Error updating admin.', 'danger')
+            return redirect(url_for('webmaster_dashboard', admin_id=admin.id))
+    
+    return render_template('edit_admin.html', admin=admin, form=form)
 
-    return render_template('edit_admin.html', form=form, admin=admin)
 
 
 @app.route('/delete_admin/<int:admin_id>', methods=['POST'])
