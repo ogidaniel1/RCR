@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Members</h1>
+
+<!-- Add FontAwesome CSS for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Present</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for member in members %}
+        <tr>
+            <td>{{ member.id }}</td>
+            <td>{{ member.member_name }}</td>
+            <td>{{ member.phone_number }}</td>
+            <td>{{ member.email }}</td>
+            <td>
+                <!-- Check/Uncheck Icon Based on Member Presence -->
+                {% if member.is_present %}
+                    <i class="fas fa-check-circle text-success"></i> <!-- Display a green check icon if present -->
+                {% else %}
+                    <i class="fas fa-times-circle text-danger"></i> <!-- Display a red cross icon if not present -->
+                {% endif %}
+            </td>
+            <td>
+                <a href="/edit_member/{{ member.id }}" class="btn btn-warning btn-sm">Edit</a>
+                <!-- Delete button with a form to handle POST request -->
+                
+                <form id="delete-form-{{ member.id }}" action="/delete_member/{{ member.id }}" method="POST" style="display:inline;" onsubmit="return confirmDelete(event, '{{ csrf_token() }}');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+                
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    function confirmDelete(event, csrfToken) {
+        event.preventDefault();
+
+        if (confirm('Are you sure you want to delete this member?')) {
+            const form = event.target;
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(new FormData(form))
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    }
+</script>
+
+{% endblock %}
+
+    

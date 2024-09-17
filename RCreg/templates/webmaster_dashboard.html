@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Webmaster Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Webmaster Dashboard</h2>
+    <!-- <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}"> -->
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mt-3">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Dashboard Tabs -->
+    <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="members-tab" data-toggle="tab" href="#members" role="tab" aria-controls="members" aria-selected="true">Members</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="admins-tab" data-toggle="tab" href="#admins" role="tab" aria-controls="admins" aria-selected="false">Admins</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="upload-tab" data-toggle="tab" href="#upload" role="tab" aria-controls="upload" aria-selected="false">Upload</a>
+        </li>
+    </ul>
+
+    <div class="tab-content mt-3">
+        <!-- Members Tab -->
+        <div class="tab-pane fade show active" id="members" role="tabpanel" aria-labelledby="members-tab">
+            <!-- Search Member Form -->
+            <form id="searchMemberForm" method="POST" action="{{ url_for('webmaster_dashboard') }}">
+                {{ search_form.hidden_tag() }}
+                <div class="form-group">
+                    <label for="search_term">Search Member (ID or Email)</label>
+                    {{ search_form.search_term(class="form-control", id="search_term") }}
+                </div>
+                <button type="submit" name="search_term" class="btn btn-primary">Search</button>
+            </form>
+
+            <!-- Search Member Results -->
+            {% if member_results %}
+            <div class="table-container mt-4" id="memberDetails">
+                <h3>Member Details</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for member in member_results %}
+                        <tr>
+                            <td>{{ member.id }}</td>
+                            <td>{{ member.member_name }}</td>
+                            <td>{{ member.phone_number }}</td>
+                            <td>{{ member.email }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-warning" onclick="editMember('{{ member.id }}')">Edit</button>
+                                    <!-- Delete button with a form to handle POST request -->
+                                        <form id="delete-form-{{ member.id }}" action="/delete_member/{{ member.id }}" method="POST" style="display:inline;" onsubmit="return confirmDelete(event, '{{ csrf_token() }}');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                        </form>
+                                    <button class="btn btn-sm btn-success" onclick="markPresent('{{ member.id }}')">Mark Present</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Add Member Form -->
+            <div class="mt-5">
+                <h4>Add New Member</h4>
+                <form method="POST" action="{{ url_for('add_member') }}">
+                    {{ member_form.hidden_tag() }}
+                    <div class="form-group">
+                        {{ member_form.member_name.label(class="form-label") }}
+                        {{ member_form.member_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ member_form.phone_number.label(class="form-label") }}
+                        {{ member_form.phone_number(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ member_form.email.label(class="form-label") }}
+                        {{ member_form.email(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ member_form.area.label(class="form-label") }}
+                        {{ member_form.area(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ member_form.parish.label(class="form-label") }}
+                        {{ member_form.parish(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ member_form.gender.label(class="form-label") }}
+                        {{ member_form.gender(class="form-control") }}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Member</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Admins Tab -->
+        <div class="tab-pane fade" id="admins" role="tabpanel" aria-labelledby="admins-tab">
+            <!-- Search Admin Form -->
+            <div class="mt-5">
+                <h4>Search Admin</h4>
+                <form id="searchAdminForm" method="POST" action="{{ url_for('webmaster_dashboard') }}">
+                    {{ search_admin_form.hidden_tag() }}
+                    <div class="form-group">
+                        <label for="search_admin_term">Search Admin (ID or Email)</label>
+                        {{ search_admin_form.search_query(class="form-control", id="search_query") }}
+                    </div>
+                    <button type="submit" name="search_admin" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+
+            <!-- Search Admin Results -->
+            {% if admin_results %}
+            <div class="table-container mt-4" id="adminDetails">
+                <h3>Admin Details</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in admin_results %}
+                        <tr>
+                            <td>{{ admin.id }}</td>
+                            <td>{{ admin.admin_name }}</td>
+                            <td>{{ admin.email }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-warning" onclick="editAdmin('{{ admin.id }}')">Edit</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteAdmin('{{ admin.id }}')">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Add Admin Form -->
+            <div class="mt-5">
+                <h4>Add New Admin</h4>
+                <form method="POST" action="{{ url_for('add_admin') }}">
+                    {{ admin_form.hidden_tag() }}
+                    <div class="form-group">
+                        {{ admin_form.admin_name.label(class="form-label") }}
+                        {{ admin_form.admin_name(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ admin_form.phone_number.label(class="form-label") }}
+                        {{ admin_form.phone_number(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ admin_form.email.label(class="form-label") }}
+                        {{ admin_form.email(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ admin_form.password.label(class="form-label") }}
+                        {{ admin_form.password(class="form-control") }}
+                    </div>
+                    <div class="form-group">
+                        {{ admin_form.confirm_password.label(class="form-label") }}
+                        {{ admin_form.confirm_password(class="form-control") }}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Admin</button>
+                </form>
+            </div>
+        </div>
+
+         <!-- Upload Tab -->
+         <div class="tab-pane fade show active" id="upload" role="tabpanel" aria-labelledby="upload-tab">
+            <div class="mt-5">
+                <h4>Upload Members from Excel</h4>
+                <form id="uploadForm" method="POST" enctype="multipart/form-data">
+                    <!-- CSRF token hidden input field -->
+                    <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label for="file">Choose file</label>
+                        <input type="file" class="form-control-file" id="file" name="file" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>                
+
+                <!-- Loader and Timer -->
+                <div id="loader" class="loader"></div>
+                <div id="timer" class="timer hidden">Uploading...</div>
+
+            </div>
+            <div id="result" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Include necessary JS for Bootstrap tabs -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+<script>
+        
+    function getCsrfToken() {
+        return document.getElementById('csrf_token').value;
+    }
+
+    function editAdmin(adminId) {
+        window.location.href = `/edit_admin/${adminId}`;
+    }
+
+    function editMember(memberId) {
+        window.location.href = `/edit_member/${memberId}`;
+    }
+
+    function markPresent(memberId) {
+        fetch('/mark_present', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({ member_id: memberId }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                // Optionally, update the UI to reflect the change
+            } else {
+                alert(data.message);
+            }
+        // })
+        // .catch((error) => {
+        //     console.error('Error:', error);
+        //     alert('An error occurred. Please try again.');
+        });
+    }
+
+    function confirmDelete(event, csrfToken) {
+        event.preventDefault();
+
+        if (confirm('Are you sure you want to delete this member?')) {
+            const form = event.target;
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(new FormData(form))
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    }      
+            
+    function deleteAdmin(adminId) {
+        // Get the CSRF token from the meta tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        
+        if (confirm('Are you sure you want to delete this Admin?')) {
+            fetch(`/delete_admin/${adminId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken // Add CSRF token to request headers
+                },
+                body: JSON.stringify({ admin_id: adminId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Admin deleted successfully');
+                    window.location.reload();  // Reload the page or update the UI
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error occurred: ' + error);
+            });
+        }
+    }
+    
+
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById('file');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert('Please select a file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('csrf_token', getCsrfToken());
+
+        fetch('/upload', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = ''; // Clear previous results
+            if (data.message) {
+                resultDiv.innerHTML = `<div class="alert alert-info">${data.message}</div>`;
+            }
+            if (data.duplicates && data.duplicates.length > 0) {
+                resultDiv.innerHTML += `<div class="alert alert-warning">Duplicate entries found: ${data.duplicates.length}</div>`;
+            }
+            if (data.new_members_count !== undefined) {
+                resultDiv.innerHTML += `<div class="alert alert-success">New members added: ${data.new_members_count}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    });
+</script>
+
+{% endblock %}
